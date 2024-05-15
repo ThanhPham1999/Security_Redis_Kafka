@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.logout.LogoutHandler;
 import static com.eledevo.integration.constant.Role.ADMIN;
 import static com.eledevo.integration.constant.Role.MANAGER;
 import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
@@ -23,8 +24,8 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @RequiredArgsConstructor
 @EnableMethodSecurity
 public class SecurityConfiguration {
-    // Tạo ra 1 mảng kiểu String chứa các đường dẫn API cho phép truy cập mà không cần quyền (permitAll)
-    private static final String[] WHITE_LIST_URL = {"/api/v1/auth/**",
+    private static final String[] WHITE_LIST_URL = {
+            "/api/v1/auth/**",
             "/v2/api-docs",
             "/v3/api-docs",
             "/v3/api-docs/**",
@@ -42,11 +43,13 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // Tắt bảo mật CSRF
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req ->
                                 req.requestMatchers(WHITE_LIST_URL)
                                         .permitAll()
                                         .requestMatchers(GET, "/api/v1/hello/world").hasAnyRole(ADMIN.name(), MANAGER.name())
+                                        .requestMatchers(POST, "/api/v1/hello/eledevo").hasAnyRole(ADMIN.name(), MANAGER.name())
+
                                         .anyRequest()
                                         .authenticated()
                 )

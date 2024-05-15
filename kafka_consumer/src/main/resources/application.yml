@@ -1,6 +1,3 @@
-server:
-  port: 8888
-
 spring:
   datasource:
     url: jdbc:oracle:thin:@100.72.227.1:1521:FREE
@@ -15,23 +12,25 @@ spring:
       hibernate:
         format_sql: true
   kafka:
-    bootstrap-servers: 100.72.227.1:9092
+    consumer:
+      bootstrap-servers: 100.72.227.1:9092
+      group-id: myGroup
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: '*'
     producer:
       bootstrap-servers: 100.72.227.1:9092
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
 #      value-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    bootstrap-servers: 100.72.227.1:9092
 
 application:
-  security:
-    jwt:
-      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-      expiration: 86400000
-      refresh-token:
-        expiration: 604800000
   redis:
     host: 100.72.227.1
     port: 6379
   kafka:
-    eledevo-topic: request
-    eledevo_topic: addRequest
+    eledevo-topic: response

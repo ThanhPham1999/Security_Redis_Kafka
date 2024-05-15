@@ -1,6 +1,7 @@
 package com.eledevo.integration.config.security;
 
 import com.eledevo.integration.repository.TokenRepository;
+import com.eledevo.integration.repository.redis.BaseRedisRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 public class LogoutService implements LogoutHandler {
 
     private final TokenRepository tokenRepository;
+    private final JwtService jwtService;
+    private final BaseRedisRepository redisService;
     @Override
     public void logout(
             HttpServletRequest request,
@@ -22,18 +25,17 @@ public class LogoutService implements LogoutHandler {
     ) {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
+        final String userEmail;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return;
         }
 
         jwt = authHeader.substring(7);
-        var storedToken = tokenRepository.findByToken(jwt)
-                .orElse(null);
-        if (storedToken != null) {
-            storedToken.setExpired(true);
-            storedToken.setRevoked(true);
-            tokenRepository.save(storedToken);
+        userEmail = jwtService.extractUsername(jwt);
+        var storedToken = redisService.get(userEmail); // Use 'get' instead of `hashExists`
+        if (storedToken != null && storedToken.equals(jwt)) {
+           redisService.delete(userEmail);
             SecurityContextHolder.clearContext();
         }
     }

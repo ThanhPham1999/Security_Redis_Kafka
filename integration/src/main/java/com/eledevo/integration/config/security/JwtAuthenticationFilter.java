@@ -2,6 +2,7 @@ package com.eledevo.integration.config.security;
 
 import com.eledevo.integration.repository.TokenRepository;
 //import com.eledevo.integration.repository.redis.BaseRedisRepository;
+import com.eledevo.integration.repository.redis.BaseRedisRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final TokenRepository tokenRepository;
+    private final BaseRedisRepository redisService;
+
 //    private final BaseRedisRepository redisService;
 
 
@@ -48,21 +51,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-//        if(redisService.hashExists()){
-//
-//           filterChain.doFilter(request, response);
-//           return
-//           }
+
         jwt = authHeader.substring(7);
         userEmail = jwtService.extractUsername(jwt);
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            var isTokenValid = tokenRepository.findByToken(jwt)
-                    .map(t -> !t.isExpired() && !t.isRevoked())
-                    .orElse(false);
-
-            if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {
+            var storedToken = redisService.get(userEmail);
+            var isTokenValid = storedToken.equals(jwt);
+            if (isTokenValid) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

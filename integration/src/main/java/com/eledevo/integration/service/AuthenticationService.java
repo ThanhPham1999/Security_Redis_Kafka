@@ -5,13 +5,11 @@ import com.eledevo.integration.constant.TokenType;
 import com.eledevo.integration.dto.request.AuthenticationRequest;
 import com.eledevo.integration.dto.request.RegisterRequest;
 import com.eledevo.integration.dto.response.AuthenticationResponse;
-import com.eledevo.integration.entity.Session;
 import com.eledevo.integration.entity.Token;
 import com.eledevo.integration.entity.User;
 import com.eledevo.integration.repository.TokenRepository;
 import com.eledevo.integration.repository.UserRepository;
 import com.eledevo.integration.repository.redis.BaseRedisRepository;
-import com.eledevo.integration.repository.redis.SessionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,13 +33,14 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final BaseRedisRepository redisService;
+
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
-
 
     @Value("${application.security.jwt.refresh-token.expiration}")
     private long refreshExpiration;
     private final String TOKEN_KEY = "token";
+
     public AuthenticationResponse register(RegisterRequest request) {
 
         var user = User.builder()
@@ -52,15 +51,16 @@ public class AuthenticationService {
                 .role(request.getRole())
                 .build();
 
-        var savedUser = repository.save(user);
+        repository.save(user);
 
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
 
-        saveUserToken(savedUser, jwtToken);
+        redisService.set(user.getEmail(), jwtToken);
 
+        redisService.setTimeToLive(user.getEmail(), jwtExpiration );
         return AuthenticationResponse.builder()
-                .accessToken(jwtToken)
+                .accessToken(jwtToken   )
                 .refreshToken(refreshToken)
                 .build();
     }
@@ -82,9 +82,9 @@ public class AuthenticationService {
 
         revokeAllUserTokens(user);
 
-//        saveUserToken(user, jwtToken);
-        redisService.set( user.getEmail(), jwtToken);
-        redisService.setTimeToLive(user.getEmail(), jwtExpiration);
+        redisService.set(user.getEmail(), jwtToken);
+
+        redisService.setTimeToLive(user.getEmail(), jwtExpiration / 1000);
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
